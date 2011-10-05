@@ -9,7 +9,7 @@
   },
   "main": "touch.js",
   "engines": {
-    "node": "*"
+    "node": "~0.5.8 || 0.6"
   },
   "dependencies": {
     "nopt": "~1.0.10"
