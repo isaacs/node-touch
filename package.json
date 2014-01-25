@@ -10,5 +10,6 @@
   },
   "dependencies": {
     "nopt": "~1.0.10"
-  }
+  },
+  "license": "ISC"
 }
