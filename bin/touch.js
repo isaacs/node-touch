@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var touch = require("../touch")
   , fs = require("fs")
   , path = require("path")
