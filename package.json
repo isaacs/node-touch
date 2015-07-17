@@ -12,5 +12,11 @@
   "dependencies": {
     "nopt": "~1.0.10"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "scripts": {
+    "test": "tap test/*.js"
+  },
+  "devDependencies": {
+    "tap": "^1.3.1"
+  }
 }
