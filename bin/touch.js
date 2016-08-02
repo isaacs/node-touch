@@ -27,6 +27,5 @@ files.forEach(function (file) {
       console.error("bad touch!")
       throw er
     }
-    console.error(file, fs.statSync(file))
   })
 })
