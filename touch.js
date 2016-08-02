@@ -74,16 +74,30 @@ function touch_ (f, options, cb) {
 }
 
 function openThenF (f, options, cb) {
+  options.f = f
   options.closeAfter = true
-  return cb
-       ? fs.open(f, options.oflags, openThenFcb(options, cb))
-       : openThenFcb(options)(null, fs.openSync(f, options.oflags))
+  if (cb) {
+    return fs.open(f, options.oflags, openThenFcb(options, cb))
+  } else {
+    var er = null
+      , fd = null
+    try {
+      fd = fs.openSync(f, options.oflags)
+    } catch (e) {
+      er = e
+    }
+    return openThenFcb(options)(er, fd)
+  }
 }
 
 function openThenFcb (options, cb) { return function (er, fd) {
   if (er) {
-    if (fd && options.closeAfter) fs.close(fd, function () {})
-    return cb(er)
+    if (er.code === "EISDIR") {
+      return ftouch(null, options, cb)
+    } else {
+      if (fd && options.closeAfter) fs.close(fd, function () {})
+      return cb(er)
+    }
   }
   return ftouch(fd, options, cb)
 }}
@@ -101,14 +115,20 @@ function ftouch_ (fd, options, cb) {
 function fstatThenFutimes (fd, options, cb) {
   if (options.atime && options.mtime) return thenFutimes(fd, options, cb)
 
-  return cb
-       ? fs.fstat(fd, fstatThenFutimescb(fd, options, cb))
-       : fstatThenFutimescb(fd, options)(null, fs.fstatSync(fd))
+  if (fd) {
+    return cb
+         ? fs.fstat(fd, fstatThenFutimescb(fd, options, cb))
+         : fstatThenFutimescb(fd, options)(null, fs.fstatSync(fd))
+  } else {
+    return cb
+         ? fs.stat(options.f, fstatThenFutimescb(fd, options, cb))
+         : fstatThenFutimescb(fd, options)(null, fs.statSync(options.f))
+  }
 }
 
 function fstatThenFutimescb (fd, options, cb) { return function (er, s) {
   if (er) {
-    if (options.closeAfter) fs.close(fd, function () {})
+    if (fd && options.closeAfter) fs.close(fd, function () {})
     return cb(er)
   }
   options.atime = options.atime || s.atime.getTime()
@@ -126,21 +146,27 @@ function thenFutimes (fd, options, cb) {
 
   var a = parseInt(options.atime / 1000, 10)
     , m = parseInt(options.mtime / 1000, 10)
-  return cb
-       ? fs.futimes(fd, a, m, thenFutimescb(fd, options, cb))
-       : thenFutimescb(fd, options)(null, fs.futimesSync(fd, a, m))
+  if (fd) {
+    return cb
+         ? fs.futimes(fd, a, m, thenFutimescb(fd, options, cb))
+         : thenFutimescb(fd, options)(null, fs.futimesSync(fd, a, m))
+  } else {
+    return cb
+         ? fs.utimes(options.f, a, m, thenFutimescb(fd, options, cb))
+         : thenFutimescb(fd, options)(null, fs.utimesSync(options.f, a, m))
+  }
 }
 
 function thenFutimescb (fd, options, cb) { return function (er, res) {
   if (er) {
-    if (options.closeAfter) fs.close(fd, function () {})
+    if (fd && options.closeAfter) fs.close(fd, function () {})
     return cb(er)
   }
   return finish(fd, options, res, cb)
 }}
 
 function finish (fd, options, res, cb) {
-  return options.closeAfter ? finishClose(fd, options, res, cb)
+  return fd && options.closeAfter ? finishClose(fd, options, res, cb)
        : cb ? cb(null, res)
        : res
 }

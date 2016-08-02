@@ -18,6 +18,16 @@ files.forEach(function (f) {
   try { fs.unlinkSync(f) } catch (e) {}
 })
 
+var dirs = [
+  'dir-sync',
+  'dir-async'
+]
+
+dirs.forEach(function (d) {
+  try { fs.rmdirSync(d) } catch (e) {}
+  try { fs.mkdirSync(d) } catch (e) {}
+})
+
 var now = Math.floor(Date.now() / 1000) * 1000
 var then = now - 1000000000 // now - 1Msec
 
@@ -120,6 +130,32 @@ t.test('set both to now - 1Msec', function (t) {
   }))
 })
 
+t.test('set both to now - 1Msec (dirs)', function (t) {
+  // Touch dirs using a time in the past because they were just created.
+  touch.sync("dir-sync", { time: then })
+  touch("dir-async", { time: then }, _(function () {
+    var astat = fs.statSync("dir-async")
+    var sstat = fs.statSync("dir-sync")
+    var asa = astat.atime.getTime()
+    var ssa = sstat.atime.getTime()
+    var asm = astat.mtime.getTime()
+    var ssm = sstat.mtime.getTime()
+
+    t.notEqual(asm, now)
+    t.equal(asa, asm)
+
+    t.notEqual(ssm, now)
+    t.equal(ssa, ssm)
+
+    t.equal(ssa, then)
+    t.equal(asa, then)
+
+    t.ok(Math.abs(Date.now() - sstat.ctime.getTime()) < 1000)
+    t.ok(Math.abs(Date.now() - astat.ctime.getTime()) < 1000)
+    t.end()
+  }))
+})
+
 t.test('set mtime to now', function (t) {
   touch.sync("sync", { time: now, mtime: true })
   touch("async", { time: now, mtime: true }, _(function () {
@@ -145,11 +181,58 @@ t.test('set mtime to now', function (t) {
   }))
 })
 
+t.test('set mtime to now (dirs)', function (t) {
+  touch.sync("dir-sync", { time: now, mtime: true })
+  touch("dir-async", { time: now, mtime: true }, _(function () {
+    var astat = fs.statSync("dir-async")
+    var sstat = fs.statSync("dir-sync")
+    var asa = astat.atime.getTime()
+    var ssa = sstat.atime.getTime()
+    var asm = astat.mtime.getTime()
+    var ssm = sstat.mtime.getTime()
+
+    t.notEqual(asa, asm)
+    t.notEqual(ssa, ssm)
+
+    t.equal(ssa, then)
+    t.equal(asa, then)
+
+    t.equal(ssm, now)
+    t.equal(asm, now)
+
+    t.ok(Math.abs(Date.now() - sstat.ctime.getTime()) < 1000)
+    t.ok(Math.abs(Date.now() - astat.ctime.getTime()) < 1000)
+    t.end()
+  }))
+})
+
 t.test('set atime to now', function (t) {
   touch.sync("sync", { time: now, atime: true })
   touch("async", { time: now, atime: true }, _(function () {
     var astat = fs.statSync("async")
     var sstat = fs.statSync("sync")
+    var asa = astat.atime.getTime()
+    var ssa = sstat.atime.getTime()
+    var asm = astat.mtime.getTime()
+    var ssm = sstat.mtime.getTime()
+
+    t.equal(asm, now)
+    t.equal(ssm, now)
+
+    t.equal(asa, now)
+    t.equal(ssa, now)
+
+    t.ok(Math.abs(Date.now() - sstat.ctime.getTime()) < 1000)
+    t.ok(Math.abs(Date.now() - astat.ctime.getTime()) < 1000)
+    t.end()
+  }))
+})
+
+t.test('set atime to now (dirs)', function (t) {
+  touch.sync("dir-sync", { time: now, atime: true })
+  touch("dir-async", { time: now, atime: true }, _(function () {
+    var astat = fs.statSync("dir-async")
+    var sstat = fs.statSync("dir-sync")
     var asa = astat.atime.getTime()
     var ssa = sstat.atime.getTime()
     var asm = astat.mtime.getTime()
@@ -215,6 +298,11 @@ t.test('cleanup', function (t) {
   files.forEach(function (f) {
     t.doesNotThrow('rm ' + f, function () {
       fs.unlinkSync(f)
+    })
+  })
+  dirs.forEach(function (d) {
+    t.doesNotThrow('rm ' + d, function () {
+      fs.rmdirSync(d)
     })
   })
   t.end()
