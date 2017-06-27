@@ -12,6 +12,9 @@ npm install touch
 
 See `man touch`
 
+This package exports a binary called `nodetouch` that works mostly
+like the unix builtin `touch(1)`.
+
 ## API Usage:
 
 ```javascript
