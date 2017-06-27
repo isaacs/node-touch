@@ -9,7 +9,7 @@
     "node": ">=0.6"
   },
   "bin": {
-    "nodetouch": "./bin/touch.js"
+    "nodetouch": "./bin/nodetouch.js"
   },
   "dependencies": {
     "nopt": "~1.0.10"
