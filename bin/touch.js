@@ -21,12 +21,10 @@ var options = nopt(types, shorthands)
 var files = options.argv.remain
 delete options.argv
 
+process.exitCode = 0
 files.forEach(function (file) {
   touch(file, options, function (er) {
-    if (er) {
-      console.error("bad touch!")
-      throw er
-    }
-    console.error(file, fs.statSync(file))
+    if (er)
+      process.exitCode = 1
   })
 })
