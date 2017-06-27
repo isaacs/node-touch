@@ -8,7 +8,7 @@
   "engines": {
     "node": ">=0.6"
   },
-  "bin": "./bin/touch.js",
+  "bin": { "nodetouch": "./bin/touch.js" },
   "dependencies": {
     "nopt": "~1.0.10"
   },
