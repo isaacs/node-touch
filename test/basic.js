@@ -1,6 +1,8 @@
+'use strict'
 var fs = require("fs")
 var touch = require("../touch.js")
 var t = require('tap')
+var mutateFS = require('mutate-fs')
 
 function _ (fn) { return function (er) {
   if (er) throw er
@@ -20,6 +22,12 @@ files.forEach(function (f) {
 
 var now = Math.floor(Date.now() / 1000) * 1000
 var then = now - 1000000000 // now - 1Msec
+
+t.teardown(function () {
+  files.forEach(function (f) {
+    try { fs.unlinkSync(f) } catch (e) {}
+  })
+})
 
 t.test('set both to now', function (t) {
   touch.sync("sync")
@@ -210,12 +218,91 @@ t.test('use one file as ref for another', function (t) {
   }))
 })
 
+t.test('fstat fail', function (t) {
+  const poop = new Error('poop')
+  const unmutate = mutateFS.fail('fstat', poop)
+  const fd = fs.openSync('sync', 'r')
 
-t.test('cleanup', function (t) {
-  files.forEach(function (f) {
-    t.doesNotThrow('rm ' + f, function () {
-      fs.unlinkSync(f)
-    })
+  t.teardown(() => {
+    unmutate()
+    fs.closeSync(fd)
   })
-  t.end()
+
+  t.throws(function () {
+    touch.ftouchSync(fd, { time: now, atime: true })
+  }, poop)
+
+  touch.ftouch(fd, { time: now, atime: true }, er => {
+    t.equal(er, poop)
+    t.end()
+  })
+})
+
+t.test('futimes fail', function (t) {
+  const poop = new Error('poop')
+  const unmutate = mutateFS.fail('futimes', poop)
+  const fd = fs.openSync('sync', 'r')
+
+  t.teardown(() => {
+    unmutate()
+    fs.closeSync(fd)
+  })
+
+  t.throws(function () {
+    touch.ftouchSync(fd)
+  }, poop)
+
+  touch.ftouch(fd, er => {
+    t.equal(er, poop)
+    t.end()
+  })
+})
+
+t.test('futimes fail, close after', function (t) {
+  const poop = new Error('poop')
+  touch.sync('sync')
+  const unmutate = mutateFS.fail('futimes', poop)
+  const fd = fs.openSync('sync', 'r')
+  const close = fs.close
+  const closeSync = fs.closeSync
+
+  let closes = 0
+  let closeSyncs = 0
+  fs.close = function () {
+    closes ++
+  }
+  fs.closeSync = function () {
+    closeSyncs ++
+  }
+
+  t.teardown(() => {
+    unmutate()
+    fs.close = close
+    fs.closeSync = closeSync
+    fs.closeSync(fd)
+    console.error('closes=%j', closes)
+  })
+
+  t.throws(function () {
+    touch.ftouchSync(fd, { closeAfter: true })
+  }, poop)
+
+  touch.ftouch(fd, { closeAfter: true }, er => {
+    t.equal(er, poop)
+    t.end()
+  })
+})
+
+t.test('ref stat fail', function (t) {
+  const poop = new Error('poop')
+  t.teardown(mutateFS.fail('stat', poop))
+
+  t.throws(function () {
+    touch.touchSync('sync', { ref: 'sync-ref' })
+  }, poop)
+
+  touch.ftouch('async', { ref: 'async-ref' }, er => {
+    t.equal(er, poop)
+    t.end()
+  })
 })
