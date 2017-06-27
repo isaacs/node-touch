@@ -24,5 +24,9 @@
   "devDependencies": {
     "mutate-fs": "^1.1.0",
     "tap": "^10.7.0"
-  }
+  },
+  "files": [
+    "touch.js",
+    "bin/nodetouch.js"
+  ]
 }
