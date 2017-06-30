@@ -45,3 +45,8 @@ provided, then it's attached to the Promise.
 
 If neither `atime` nor `mtime` are set, then both values are set.  If
 one of them is set, then the other is not.
+
+## cli
+
+This package creates a `nodetouch` command line executable that works
+very much like the unix builtin `touch(1)`
