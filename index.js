@@ -96,7 +96,7 @@ class Touch extends EE {
 
   open () {
     fs.open(this.path, this.oflags, (er, fd) => {
-      if (er)
+      if (er && er.code !== 'EISDIR')
         this.emit('error', er)
       else
         this.onopen(fd)
@@ -132,7 +132,9 @@ class Touch extends EE {
   }
 
   fstat () {
-    fs.fstat(this.fd, (er, st) => {
+    const stat = this.fd ? 'fstat' : 'stat'
+    const target = this.fd || this.path
+    fs[stat](target, (er, st) => {
       if (er)
         this.emit('error', er)
       else
@@ -151,7 +153,9 @@ class Touch extends EE {
   }
 
   futimes () {
-    fs.futimes(this.fd, this.atime, this.mtime, er => {
+    const utimes = this.fd ? 'futimes' : 'utimes'
+    const target = this.fd || this.path
+    fs[utimes](target, this.atime, this.mtime, er => {
       if (er)
         this.emit('error', er)
       else
@@ -162,7 +166,14 @@ class Touch extends EE {
 
 class TouchSync extends Touch {
   open () {
-    this.onopen(fs.openSync(this.path, this.oflags))
+    try {
+      this.onopen(fs.openSync(this.path, this.oflags))
+    } catch (er) {
+      if (er.code === 'EISDIR')
+        this.onopen(null)
+      else
+        throw er
+    }
   }
 
   statref () {
@@ -178,8 +189,10 @@ class TouchSync extends Touch {
 
   fstat () {
     let threw = true
+    const stat = this.fd ? 'fstatSync' : 'statSync'
+    const target = this.fd || this.path
     try {
-      this.onfstat(fs.fstatSync(this.fd))
+      this.onfstat(fs[stat](target))
       threw = false
     } finally {
       if (threw)
@@ -189,8 +202,10 @@ class TouchSync extends Touch {
 
   futimes () {
     let threw = true
+    const utimes = this.fd ? 'futimesSync' : 'utimesSync'
+    const target = this.fd || this.path
     try {
-      fs.futimesSync(this.fd, this.atime, this.mtime)
+      fs[utimes](target, this.atime, this.mtime)
       threw = false
     } finally {
       if (threw)
