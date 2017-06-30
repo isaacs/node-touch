@@ -1,13 +1,14 @@
 'use strict'
 var fs = require("fs")
-var touch = require("../touch.js")
+var touch = require("../")
 var t = require('tap')
 var mutateFS = require('mutate-fs')
 
-function _ (fn) { return function (er) {
-  if (er) throw er
+const _ = fn => er => {
+  if (er)
+    throw er
   fn()
-}}
+}
 
 var files = [
   'sync',
@@ -16,20 +17,20 @@ var files = [
   'async-ref'
 ]
 
-files.forEach(function (f) {
+files.forEach(f => {
   try { fs.unlinkSync(f) } catch (e) {}
 })
 
 var now = Math.floor(Date.now() / 1000) * 1000
 var then = now - 1000000000 // now - 1Msec
 
-t.teardown(function () {
-  files.forEach(function (f) {
+t.teardown(() => {
+  files.forEach(f => {
     try { fs.unlinkSync(f) } catch (e) {}
   })
 })
 
-t.test('set both to now', function (t) {
+t.test('set both to now', t => {
   touch.sync("sync")
   touch("async", _(function () {
     var astat = fs.statSync("async")
@@ -45,15 +46,15 @@ t.test('set both to now', function (t) {
     t.equal(asa, now)
 
     // ctime should always be now-ish
-    t.ok(Math.abs(Date.now() - sstat.ctime.getTime()) < 1000)
-    t.ok(Math.abs(Date.now() - astat.ctime.getTime()) < 1000)
+    t.ok(Math.abs(Date.now() - sstat.ctime.getTime()) < 10000)
+    t.ok(Math.abs(Date.now() - astat.ctime.getTime()) < 10000)
     t.end()
   }))
 })
 
-t.test('set both to now, using futimes', function (t) {
+t.test('set both to now, using futimes', t => {
   function runTest (closeAfter) {
-    t.test('closeAfter=' + closeAfter, function (t) {
+    t.test('closeAfter=' + closeAfter, t => {
       var sfd = fs.openSync('sync', 'w')
 
       if (closeAfter) {
@@ -80,19 +81,20 @@ t.test('set both to now, using futimes', function (t) {
 
         t.equal(asm, asa)
         t.equal(ssm, ssa)
-        t.equal(ssa, now)
-        t.equal(asa, now)
+
+        // atime should always be now-ish
+        t.ok(Math.abs(Date.now() - sstat.atime.getTime()) < 1000)
+        t.ok(Math.abs(Date.now() - astat.atime.getTime()) < 1000)
 
         // ctime should always be now-ish
         t.ok(Math.abs(Date.now() - sstat.ctime.getTime()) < 1000)
         t.ok(Math.abs(Date.now() - astat.ctime.getTime()) < 1000)
-        t.end()
       })
 
       if (closeAfter) {
-        touch.ftouch(afd, {closeAfter: true}, then)
+        return touch.ftouch(afd, {closeAfter: true}).then(then)
       } else {
-        touch.ftouch(afd, then)
+        return touch.ftouch(afd, then)
       }
     })
   }
@@ -102,7 +104,7 @@ t.test('set both to now, using futimes', function (t) {
   t.end()
 })
 
-t.test('set both to now - 1Msec', function (t) {
+t.test('set both to now - 1Msec', t => {
   // also use force, just for funsies
   touch.sync("sync", { time: then, force: true })
   touch("async", { time: then, force: true }, _(function () {
@@ -128,7 +130,7 @@ t.test('set both to now - 1Msec', function (t) {
   }))
 })
 
-t.test('set mtime to now', function (t) {
+t.test('set mtime to now', t => {
   touch.sync("sync", { time: now, mtime: true })
   touch("async", { time: now, mtime: true }, _(function () {
     var astat = fs.statSync("async")
@@ -153,7 +155,7 @@ t.test('set mtime to now', function (t) {
   }))
 })
 
-t.test('set atime to now', function (t) {
+t.test('set atime to now', t => {
   touch.sync("sync", { time: now, atime: true })
   touch("async", { time: now, atime: true }, _(function () {
     var astat = fs.statSync("async")
@@ -175,7 +177,7 @@ t.test('set atime to now', function (t) {
   }))
 })
 
-t.test('nocreate should throw on ENOENT', function (t) {
+t.test('nocreate should throw on ENOENT', t => {
   t.throws(function () {
     touch.sync('sync-noent', { nocreate: true })
   })
@@ -185,7 +187,60 @@ t.test('nocreate should throw on ENOENT', function (t) {
   })
 })
 
-t.test('use one file as ref for another', function (t) {
+t.test('use one file as ref for another, only mtime', t => {
+  fs.writeFileSync('sync-ref', '')
+  fs.writeFileSync('async-ref', '')
+  fs.writeFileSync('sync', '')
+  fs.writeFileSync('async', '')
+
+  fs.utimesSync('sync-ref', then, then)
+  fs.utimesSync('async-ref', then, then)
+  fs.utimesSync('sync', now, now)
+  fs.utimesSync('async', now, now)
+
+  touch.sync('sync-ref', { ref: 'sync', mtime: true })
+  touch('async-ref', { ref: 'async', mtime: true }, _(function () {
+    var astat = fs.statSync("async")
+    var sstat = fs.statSync("sync")
+    var arstat = fs.statSync('async-ref')
+    var srstat = fs.statSync('sync-ref')
+
+    var asa = astat.atime.getTime()
+    var ssa = sstat.atime.getTime()
+    var arsa = arstat.atime.getTime()
+    var srsa = srstat.atime.getTime()
+
+    var asm = astat.mtime.getTime()
+    var ssm = sstat.mtime.getTime()
+    var arsm = arstat.mtime.getTime()
+    var srsm = srstat.mtime.getTime()
+
+    var arsc = arstat.ctime.getTime()
+    var srsc = srstat.ctime.getTime()
+
+    t.equal(asm, arsm)
+    t.equal(ssm, srsm)
+
+    t.notEqual(asa, arsa)
+    t.notEqual(ssa, srsa)
+
+    t.ok(Math.abs(Date.now() - srsc) < 1000)
+    t.ok(Math.abs(Date.now() - arsc) < 1000)
+    t.end()
+  }))
+})
+
+t.test('use one file as ref for another', t => {
+  fs.writeFileSync('sync-ref', '')
+  fs.writeFileSync('async-ref', '')
+  fs.writeFileSync('sync', '')
+  fs.writeFileSync('async', '')
+
+  fs.utimesSync('sync-ref', then, then)
+  fs.utimesSync('async-ref', then, then)
+  fs.utimesSync('sync', now, now)
+  fs.utimesSync('async', now, now)
+
   touch.sync('sync-ref', { ref: 'sync' })
   touch('async-ref', { ref: 'async' }, _(function () {
     var astat = fs.statSync("async")
@@ -218,7 +273,7 @@ t.test('use one file as ref for another', function (t) {
   }))
 })
 
-t.test('fstat fail', function (t) {
+t.test('fstat fail', t => {
   const poop = new Error('poop')
   const unmutate = mutateFS.fail('fstat', poop)
   const fd = fs.openSync('sync', 'r')
@@ -232,13 +287,13 @@ t.test('fstat fail', function (t) {
     touch.ftouchSync(fd, { time: now, atime: true })
   }, poop)
 
-  touch.ftouch(fd, { time: now, atime: true }, er => {
+  touch.ftouch(fd, { time: now, atime: true }).catch(er => {
     t.equal(er, poop)
     t.end()
   })
 })
 
-t.test('futimes fail', function (t) {
+t.test('futimes fail', t => {
   const poop = new Error('poop')
   const unmutate = mutateFS.fail('futimes', poop)
   const fd = fs.openSync('sync', 'r')
@@ -258,7 +313,7 @@ t.test('futimes fail', function (t) {
   })
 })
 
-t.test('futimes fail, close after', function (t) {
+t.test('futimes fail, close after', t => {
   const poop = new Error('poop')
   touch.sync('sync')
   const unmutate = mutateFS.fail('futimes', poop)
@@ -280,7 +335,6 @@ t.test('futimes fail, close after', function (t) {
     fs.close = close
     fs.closeSync = closeSync
     fs.closeSync(fd)
-    console.error('closes=%j', closes)
   })
 
   t.throws(function () {
@@ -293,7 +347,7 @@ t.test('futimes fail, close after', function (t) {
   })
 })
 
-t.test('ref stat fail', function (t) {
+t.test('ref stat fail', t => {
   const poop = new Error('poop')
   t.teardown(mutateFS.fail('stat', poop))
 
@@ -301,8 +355,16 @@ t.test('ref stat fail', function (t) {
     touch.touchSync('sync', { ref: 'sync-ref' })
   }, poop)
 
-  touch.ftouch('async', { ref: 'async-ref' }, er => {
+  touch('async', { ref: 'async-ref' }, er => {
     t.equal(er, poop)
     t.end()
   })
+})
+
+t.test('open fail', t => {
+  const poop = new Error('poop')
+  t.teardown(mutateFS.fail('open', poop))
+  t.throws(() => touch.sync('sync'))
+  return touch('async').then(() => t.fail('should fail'), er =>
+    t.equal(er, poop))
 })

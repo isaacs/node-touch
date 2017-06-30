@@ -28,6 +28,11 @@ Gives you the following functions:
 * `touch.ftouch(fd, options, cb)`
 * `touch.ftouchSync(fd, options)`
 
+All the `options` objects are optional.
+
+All the async functions return a Promise.  If a callback function is
+provided, then it's attached to the Promise.
+
 ## Options
 
 * `force` like `touch -f` Boolean
