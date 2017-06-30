@@ -71,6 +71,8 @@ class Touch extends EE {
     this.atime = options.atime
     this.mtime = options.mtime
     this.ref = options.ref
+    this.nocreate = !!options.nocreate
+    this.force = !!options.force
     this.closeAfter = options.closeAfter
     this.oflags = options.oflags
     this.options = options
@@ -79,7 +81,7 @@ class Touch extends EE {
       this.closeAfter = true
       this.open()
     } else
-      this.onopen(this.fd)
+      this.onopen(null, this.fd)
   }
 
   emit (ev, data) {
@@ -95,22 +97,26 @@ class Touch extends EE {
   }
 
   open () {
-    fs.open(this.path, this.oflags, (er, fd) => {
-      if (er && er.code !== 'EISDIR')
-        this.emit('error', er)
-      else
-        this.onopen(fd)
-    })
+    fs.open(this.path, this.oflags, (er, fd) => this.onopen(er, fd))
   }
 
-  onopen (fd) {
-    this.fd = fd
-    if (this.ref)
-      this.statref()
-    else if (!this.atime || !this.mtime)
-      this.fstat()
-    else
-      this.futimes()
+  onopen (er, fd) {
+    if (er) {
+      if (er.code === 'EISDIR')
+        this.onopen(null, null)
+      else if (er.code === 'ENOENT' && this.nocreate)
+        this.emit('done')
+      else
+        this.emit('error', er)
+    } else {
+      this.fd = fd
+      if (this.ref)
+        this.statref()
+      else if (!this.atime || !this.mtime)
+        this.fstat()
+      else
+        this.futimes()
+    }
   }
 
   statref () {
@@ -167,12 +173,9 @@ class Touch extends EE {
 class TouchSync extends Touch {
   open () {
     try {
-      this.onopen(fs.openSync(this.path, this.oflags))
+      this.onopen(null, fs.openSync(this.path, this.oflags))
     } catch (er) {
-      if (er.code === 'EISDIR')
-        this.onopen(null)
-      else
-        throw er
+      this.onopen(er)
     }
   }
 
@@ -216,6 +219,6 @@ class TouchSync extends Touch {
 
   close () {
     if (typeof this.fd === 'number' && this.closeAfter)
-      fs.closeSync(this.fd)
+      try { fs.closeSync(this.fd) } catch (er) {}
   }
 }

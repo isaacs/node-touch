@@ -260,14 +260,11 @@ t.test('set atime to now (dirs)', t => {
   }))
 })
 
-t.test('nocreate should throw on ENOENT', t => {
-  t.throws(() => {
-    touch.sync('sync-noent', { nocreate: true })
-  })
-  touch('async-noent', { nocreate: true }, er => {
-    t.isa(er, Error)
-    t.end()
-  })
+t.test('nocreate should not throw on ENOENT', t => {
+  touch.sync('sync-noent', { nocreate: true })
+  t.throws(() => fs.statSync('sync-noent'))
+  return touch('async-noent', { nocreate: true }).then(() =>
+    t.throws(() => fs.statSync('async-noent')))
 })
 
 t.test('use one file as ref for another, only mtime', t => {
