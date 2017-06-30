@@ -161,7 +161,7 @@ class Touch extends EE {
   futimes () {
     const utimes = this.fd ? 'futimes' : 'utimes'
     const target = this.fd || this.path
-    fs[utimes](target, this.atime, this.mtime, er => {
+    fs[utimes](target, ''+this.atime, ''+this.mtime, er => {
       if (er)
         this.emit('error', er)
       else
