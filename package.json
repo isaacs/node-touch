@@ -2,7 +2,7 @@
   "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
   "name": "touch",
   "description": "like touch(1) in node",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "repository": "git://github.com/isaacs/node-touch.git",
   "bin": {
     "nodetouch": "./bin/nodetouch.js"
