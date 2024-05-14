@@ -7,9 +7,6 @@
   "bin": {
     "nodetouch": "./bin/nodetouch.js"
   },
-  "dependencies": {
-    "nopt": "~1.0.10"
-  },
   "license": "ISC",
   "scripts": {
     "test": "tap test/*.js --100 -J",
