@@ -31,7 +31,7 @@ dirs.forEach(d => {
   try { fs.mkdirSync(d) } catch (e) {}
 })
 
-const now = Math.floor(Date.now() / 1000) * 1000
+const now = Date.now()
 const then = now - 1000000000 // now - 1Msec
 
 t.teardown(() => {
@@ -50,10 +50,12 @@ t.test('set both to now', t => {
     const asm = astat.mtime.getTime()
     const ssm = sstat.mtime.getTime()
 
-    t.equal(asm, asa)
-    t.equal(ssm, ssa)
-    t.equal(ssa, now)
-    t.equal(asa, now)
+    // can actually end up a few ms apart on systems with support
+    // for subsecond stat times.
+    t.equal(Math.abs(asm - asa) < 1000, true)
+    t.equal(Math.abs(ssm - ssa) < 1000, true)
+    t.equal(Math.abs(ssa - now) < 1000, true)
+    t.equal(Math.abs(asa - now) < 1000, true)
 
     // ctime should always be now-ish
     t.ok(Math.abs(Date.now() - sstat.ctime.getTime()) < 10000)
@@ -273,8 +275,8 @@ t.test('use one file as ref for another, only mtime', t => {
   fs.writeFileSync('sync', '')
   fs.writeFileSync('async', '')
 
-  fs.utimesSync('sync-ref', then, then)
-  fs.utimesSync('async-ref', then, then)
+  fs.utimesSync('sync-ref', then/1000, then/1000)
+  fs.utimesSync('async-ref', then/1000, then/1000)
   fs.utimesSync('sync', now, now)
   fs.utimesSync('async', now, now)
 
@@ -301,8 +303,8 @@ t.test('use one file as ref for another, only mtime', t => {
     t.equal(asm, arsm)
     t.equal(ssm, srsm)
 
-    t.notEqual(asa, arsa)
-    t.notEqual(ssa, srsa)
+    t.not(asa, arsa)
+    t.not(ssa, srsa)
 
     t.ok(Math.abs(Date.now() - srsc) < 1000)
     t.ok(Math.abs(Date.now() - arsc) < 1000)
@@ -423,8 +425,11 @@ t.test('futimes fail, close after', t => {
 
   touch.ftouch(fd, { closeAfter: true }, er => {
     t.equal(er, poop)
+    t.equal(closes, 1, '1 close')
+    t.equal(closeSyncs, 1, '1 closeSync')
     t.end()
   })
+
 })
 
 t.test('ref stat fail', t => {

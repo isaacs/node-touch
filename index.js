@@ -41,7 +41,7 @@ const validOpts = (options, path, fd) => {
 
   // {mtime: true}, {ctime: true}
   // If set to something else, then treat as epoch ms value
-  const now = parseInt(new Date(options.time || Date.now()).getTime() / 1000)
+  const now = new Date(options.time || Date.now()).getTime() / 1000
   if (!options.atime && !options.mtime)
     options.atime = options.mtime = now
   else {
@@ -129,8 +129,8 @@ class Touch extends EE {
   }
 
   onstatref (st) {
-    this.atime = this.atime && parseInt(st.atime.getTime()/1000, 10)
-    this.mtime = this.mtime && parseInt(st.mtime.getTime()/1000, 10)
+    this.atime = this.atime && st.atime.getTime()/1000
+    this.mtime = this.mtime && st.mtime.getTime()/1000
     if (!this.atime || !this.mtime)
       this.fstat()
     else
@@ -150,10 +150,10 @@ class Touch extends EE {
 
   onfstat (st) {
     if (typeof this.atime !== 'number')
-      this.atime = parseInt(st.atime.getTime()/1000, 10)
+      this.atime = st.atime.getTime()/1000
 
     if (typeof this.mtime !== 'number')
-      this.mtime = parseInt(st.mtime.getTime()/1000, 10)
+      this.mtime = st.mtime.getTime()/1000
 
     this.futimes()
   }
