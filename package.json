@@ -7,7 +7,7 @@
   "bin": {
     "nodetouch": "./bin/nodetouch.js"
   },
-  "license": "ISC",
+  "license": "BlueOak-1.0.0",
   "scripts": {
     "test": "tap test/*.js --100 -J",
     "preversion": "npm test",
